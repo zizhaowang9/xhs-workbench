@@ -1,0 +1,21 @@
+{
+  "_说明": "本文件是占位模板，不要直接使用。安装器会在 <安装根>\\config\\paths.json 生成该机的真实路径。",
+  "version": "1.1.0",
+  "root": "<安装根目录>",
+  "project_root": "<安装根目录>",
+  "xhs_repo": "<安装根目录>\\tools\\xiaohongshu-skills",
+  "repo_dir": "<安装根目录>\\tools\\xiaohongshu-skills",
+  "render_repo": "<安装根目录>\\tools\\Auto-Redbook-Skills",
+  "skills_dir": "<安装根目录>\\skills",
+  "workdir": "<安装根目录>\\workdir",
+  "knowledge_dir": "<安装根目录>\\knowledge",
+  "logs_dir": "<安装根目录>\\logs",
+  "tmp_dir": "<安装根目录>\\tmp",
+  "xhs_python": "<安装根目录>\\tools\\xiaohongshu-skills\\.venv\\Scripts\\python.exe",
+  "render_python": "<安装根目录>\\tools\\Auto-Redbook-Skills\\.venv\\Scripts\\python.exe",
+  "uv_cache_dir": "<安装根目录>\\cache\\uv",
+  "python_install_dir": "<安装根目录>\\runtime\\python",
+  "playwright_browsers": "<安装根目录>\\browsers",
+  "bridge_url": "ws://localhost:9333",
+  "bridge_port": 9333
+}

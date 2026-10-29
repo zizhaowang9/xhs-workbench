@@ -1,0 +1,60 @@
+/* ============================================================
+   封面主题：professional（专业商务蓝）
+   特征：纯白纸面、细蓝边框、左侧蓝色竖条、底部蓝色细线。
+   ============================================================ */
+
+.cover-inner {
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  box-shadow: 0 10px 40px rgba(37, 99, 235, 0.10);
+  padding: 96px 88px 96px 104px;
+  overflow: hidden;
+}
+
+/* 左侧蓝色竖条 */
+.cover-inner::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 100%;
+  background: #2563eb;
+}
+
+/* 底部蓝色细线 */
+.cover-inner::after {
+  content: "";
+  position: absolute;
+  left: 104px;
+  right: 88px;
+  bottom: 74px;
+  height: 3px;
+  background: #2563eb;
+  opacity: 0.85;
+}
+
+.cover-emoji {
+  font-size: 132px;
+  margin-bottom: 34px;
+}
+
+.cover-title {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  background-clip: border-box !important;
+  color: #1e3a8a;
+  font-weight: 800;
+  letter-spacing: -1px;
+  text-align: left;
+}
+
+.cover-subtitle {
+  color: #475569;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  padding-bottom: 26px;
+}
+
+.cover-deco { display: none; }

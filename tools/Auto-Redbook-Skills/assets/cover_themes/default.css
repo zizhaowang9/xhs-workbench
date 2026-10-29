@@ -1,0 +1,31 @@
+/* ============================================================
+   封面主题：default（浅灰极简）
+   说明：保持原始封面观感，作为其余主题的基准。
+   ============================================================ */
+
+.cover-inner {
+  background: #f3f3f3;
+  border: none;
+  border-radius: 25px;
+  box-shadow: none;
+  padding: 80px 85px;
+}
+
+.cover-emoji {
+  font-size: 180px;
+  margin-bottom: 50px;
+}
+
+.cover-title {
+  /* 保留内联的深灰渐变字 */
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.cover-subtitle {
+  color: #111111;
+  font-weight: 350;
+  letter-spacing: 0;
+}
+
+.cover-deco { display: none; }

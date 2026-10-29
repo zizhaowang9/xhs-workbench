@@ -1,0 +1,46 @@
+# 密钥与本机私有配置
+config/*.local.json
+config/paths.json
+config/paths.json.bak-*
+config/style_examples.json
+config/gpt_usage.jsonl
+config/install-state.json
+config/update-state.json
+.env
+*.key
+*.pem
+
+# 稿件、草稿、运行产物
+runs/
+workdir/
+tmp/
+cache/
+logs/
+backups/
+browsers/
+sample/
+
+# 个人资料（不要进仓库；仓库里只放 seed 模板）
+knowledge/00-首页.md
+knowledge/01-业务总纲/01-账号定位.md
+knowledge/01-业务总纲/03-已确认业务事实.md
+knowledge/99-待核实与缺口.md
+knowledge/04-案例与训练/03-执行反馈.md
+knowledge/04-案例与训练/04-问题诊断记录.md
+knowledge/06-工作记录/
+knowledge/05-内容经营/
+skills/xhs-daily/account_positioning.md
+skills/xhs-daily/feedback.md
+skills/xhs-daily/posts/
+skills/xhs-daily/series/
+
+# 环境与缓存
+.venv/
+venv/
+__pycache__/
+*.pyc
+node_modules/
+.pytest_cache/
+.DS_Store
+Thumbs.db
+*.bak-*

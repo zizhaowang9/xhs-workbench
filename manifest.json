@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "version": "1.1.0",
+  "release_name": "xhs-workbench",
+  "entries": [
+    {
+      "from": "tools/xiaohongshu-skills",
+      "to": "tools/xiaohongshu-skills",
+      "mode": "shared"
+    },
+    {
+      "from": "tools/Auto-Redbook-Skills",
+      "to": "tools/Auto-Redbook-Skills",
+      "mode": "shared"
+    },
+    {
+      "from": "tools/gpt-writer",
+      "to": "tools/gpt-writer",
+      "mode": "shared"
+    },
+    {
+      "from": "app/adapters",
+      "to": "app/adapters",
+      "mode": "shared"
+    },
+    {
+      "from": "app/constraints",
+      "to": "app/constraints",
+      "mode": "shared"
+    },
+    {
+      "from": "installer",
+      "to": "installer",
+      "mode": "shared"
+    },
+    {
+      "from": "config_template",
+      "to": "config_template",
+      "mode": "shared"
+    },
+    {
+      "from": "docs",
+      "to": "docs",
+      "mode": "shared"
+    },
+    {
+      "from": "docs/samples",
+      "to": "sample/cover-themes",
+      "mode": "shared"
+    },
+    {
+      "from": "knowledge",
+      "to": "knowledge",
+      "mode": "shared"
+    },
+    {
+      "from": "skills/xhs-daily",
+      "to": "skills/xhs-daily",
+      "mode": "shared"
+    },
+    {
+      "from": "seed",
+      "to": ".",
+      "mode": "seed",
+      "note": "个人资料模板：仅当本机不存在该文件时写入，已有的一律保留"
+    },
+    {
+      "from": "VERSION",
+      "to": "VERSION",
+      "mode": "shared"
+    }
+  ],
+  "root_files": [
+    "安装.cmd",
+    "检查环境.cmd",
+    "启动助手.cmd",
+    "更新工作台.cmd",
+    "先看这里.md",
+    "CHANGELOG.md"
+  ],
+  "deps": [
+    {
+      "name": "xhs",
+      "kind": "uv",
+      "lock": "tools/xiaohongshu-skills/uv.lock"
+    },
+    {
+      "name": "render",
+      "kind": "pip",
+      "lock": "app/constraints/render-requirements.lock.txt"
+    }
+  ],
+  "checks": [
+    "VERSION",
+    "config/paths.json",
+    "skills/xhs-daily/SKILL.md",
+    "knowledge/00-首页.md",
+    "knowledge/03-运营知识/00-知识目录.md",
+    "tools/gpt-writer/gpt_write.py",
+    "installer/update.ps1",
+    "更新工作台.cmd"
+  ],
+  "excluded": [
+    "config/*.local.json（模型密钥）",
+    "config/gpt_usage.jsonl（调用计费记录）",
+    "config/paths.json、config/style_examples.json（本机私有配置）",
+    "runs/（稿件与草稿状态）",
+    "knowledge 个人文件（首页/定位/业务事实/执行反馈/待核实/工作记录/内容经营）",
+    "logs/、cache/、tmp/、backups/、browsers/",
+    ".venv/、__pycache__/、node_modules/",
+    "浏览器用户目录、Cookie"
+  ]
+}

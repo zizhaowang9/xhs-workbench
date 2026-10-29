@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1700px; height: 1278px; background: #f8fafc;
+    font-family: 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    padding: 0 48px; overflow: hidden;
+  }
+  h1 { font-size: 34px; color: #0f172a; padding-top: 30px; letter-spacing: 1px; }
+  h1 small { font-size: 19px; color: #64748b; font-weight: 400; margin-left: 14px; }
+  .grid {
+    display: grid; grid-template-columns: repeat(4, 380px);
+    gap: 30px 28px; margin-top: 26px;
+  }
+  .cell { width: 380px; }
+  .cell img {
+    width: 380px; height: 507px; display: block;
+    border-radius: 6px; box-shadow: 0 4px 14px rgba(15, 23, 42, .14);
+  }
+  figcaption { padding-top: 9px; display: flex; align-items: baseline; gap: 8px; }
+  figcaption b { font-size: 20px; color: #0f172a; }
+  figcaption span { font-size: 15px; color: #94a3b8; font-family: Consolas, monospace; }
+</style></head>
+<body>
+  <h1>封面主题对比<small>同一标题与副标题，8 种主题各一张封面</small></h1>
+  <div class="grid">
+    <figure class="cell">
+      <img src="cover-default.png" alt="default">
+      <figcaption><b>默认极简</b><span>default</span></figcaption>
+    </figure>
+    <figure class="cell">
+      <img src="cover-professional.png" alt="professional">
+      <figcaption><b>专业商务</b><span>professional</span></figcaption>
+    </figure>
+    <figure class="cell">
+      <img src="cover-playful-geometric.png" alt="playful-geometric">
+      <figcaption><b>活泼几何</b><span>playful-geometric</span></figcaption>
+    </figure>
+    <figure class="cell">
+      <img src="cover-neo-brutalism.png" alt="neo-brutalism">
+      <figcaption><b>新粗野</b><span>neo-brutalism</span></figcaption>
+    </figure>
+    <figure class="cell">
+      <img src="cover-botanical.png" alt="botanical">
+      <figcaption><b>植物自然</b><span>botanical</span></figcaption>
+    </figure>
+    <figure class="cell">
+      <img src="cover-retro.png" alt="retro">
+      <figcaption><b>复古印刷</b><span>retro</span></figcaption>
+    </figure>
+    <figure class="cell">
+      <img src="cover-terminal.png" alt="terminal">
+      <figcaption><b>终端极客</b><span>terminal</span></figcaption>
+    </figure>
+    <figure class="cell">
+      <img src="cover-sketch.png" alt="sketch">
+      <figcaption><b>手写笔记</b><span>sketch</span></figcaption>
+    </figure></div>
+</body></html>

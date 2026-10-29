@@ -1,0 +1,87 @@
+/* ============================================================
+   封面主题：sketch（手写笔记）
+   特征：方格纸底、手绘感不规则圆角、红色波浪下划线、黄色荧光块。
+   ============================================================ */
+
+.cover-inner {
+  background-color: #fffef8;
+  background-image:
+    repeating-linear-gradient(0deg, #e9ecef 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, #e9ecef 0 1px, transparent 1px 34px);
+  border: 4px solid #333333;
+  border-radius: 14px 26px 16px 24px;
+  box-shadow: 8px 8px 0 rgba(17, 24, 39, 0.12);
+  padding: 96px 88px;
+  overflow: hidden;
+}
+
+/* 右上角胶带 */
+.cover-inner::before {
+  content: "";
+  position: absolute;
+  right: -46px;
+  top: 34px;
+  width: 190px;
+  height: 54px;
+  background: #ffe066;
+  opacity: 0.75;
+  transform: rotate(38deg);
+  border-left: 1px dashed #d4a017;
+  border-right: 1px dashed #d4a017;
+}
+
+/* 左下角铅笔线 */
+.cover-inner::after {
+  content: "";
+  position: absolute;
+  left: 88px;
+  right: 88px;
+  bottom: 66px;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    #9ca3af 0 18px,
+    transparent 18px 26px
+  );
+}
+
+.cover-emoji {
+  font-size: 122px;
+  margin-bottom: 28px;
+  background: rgba(255, 224, 102, 0.55);
+  border-radius: 8px 18px 10px 16px;
+  padding: 6px 20px;
+  width: fit-content;
+  transform: rotate(-1.5deg);
+  line-height: 1.15;
+}
+
+.cover-title {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  background-clip: border-box !important;
+  flex: 0 0 auto;
+  color: #111827;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-align: left;
+  line-height: 1.34;
+  position: relative;
+  z-index: 2;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='14' viewBox='0 0 120 14'><path d='M2 8 Q 17 1, 32 8 T 62 8 T 92 8 T 118 8' fill='none' stroke='%23e11d48' stroke-width='5' stroke-linecap='round'/></svg>") !important;
+  background-repeat: repeat-x !important;
+  background-position: left bottom !important;
+  background-size: 120px 14px !important;
+  padding-bottom: 22px;
+}
+
+.cover-subtitle {
+  color: #374151;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding-bottom: 26px;
+  position: relative;
+  z-index: 2;
+}
+
+.cover-deco { display: none; }

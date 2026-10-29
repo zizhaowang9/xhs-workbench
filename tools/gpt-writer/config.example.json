@@ -1,0 +1,18 @@
+{
+  "_readme": "这是可随工具分发的配置模板，不含任何密钥。复制到 <安装根>\\config\\gpt.local.json 后填入自己的密钥。",
+  "provider": "openai",
+  "protocol": "responses",
+  "base_url": "https://api.openai.com/v1",
+  "model": "",
+  "api_key": "",
+  "api_key_env": "XHS_GPT_API_KEY",
+  "json_mode": "json_schema",
+  "max_tokens_param": "",
+  "limits": {
+    "max_input_chars": 24000,
+    "max_output_tokens": 3500,
+    "max_retries": 2,
+    "timeout_seconds": 240,
+    "backoff_seconds": 3
+  }
+}

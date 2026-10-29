@@ -1,0 +1,19 @@
+{
+  "_readme": "复制为 <安装根>\\config\\gpt.local.json 后填写你自己的服务信息。这是本机私密文件：不要提交、不要分享、不要贴到聊天里。",
+  "_待配置提示": "填好之前，写稿工具会提示「程序已更新、写稿模型待配置」。",
+  "provider": "openai",
+  "protocol": "responses",
+  "base_url": "https://api.openai.com/v1",
+  "model": "",
+  "api_key": "",
+  "api_key_env": "XHS_GPT_API_KEY",
+  "json_mode": "json_schema",
+  "max_tokens_param": "",
+  "limits": {
+    "max_input_chars": 24000,
+    "max_output_tokens": 3500,
+    "max_retries": 2,
+    "timeout_seconds": 240,
+    "backoff_seconds": 3
+  }
+}

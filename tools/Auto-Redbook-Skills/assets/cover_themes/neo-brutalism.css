@@ -1,0 +1,69 @@
+/* ============================================================
+   封面主题：neo-brutalism（新粗野主义）
+   特征：亮黄纸面、粗黑描边、硬投影、无圆角、红色方块装饰。
+   ============================================================ */
+
+.cover-inner {
+  background: #ffe066;
+  border: 10px solid #111111;
+  border-radius: 0;
+  box-shadow: 18px 18px 0 #111111;
+  padding: 92px 84px;
+  overflow: hidden;
+}
+
+/* 右上角红色实心方块 */
+.cover-inner::before {
+  content: "";
+  position: absolute;
+  right: 44px;
+  top: 52px;
+  width: 96px;
+  height: 96px;
+  background: #ff4757;
+  border: 6px solid #111111;
+}
+
+/* 左下角黑色斜线块 */
+.cover-inner::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  height: 28px;
+  background: repeating-linear-gradient(
+    45deg,
+    #111111 0 14px,
+    transparent 14px 28px
+  );
+}
+
+.cover-emoji {
+  font-size: 126px;
+  margin-bottom: 26px;
+  filter: saturate(1.1);
+}
+
+.cover-title {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  background-clip: border-box !important;
+  color: #111111;
+  font-weight: 900;
+  letter-spacing: -2px;
+  text-align: left;
+  line-height: 1.22;
+}
+
+.cover-subtitle {
+  color: #111111;
+  font-weight: 700;
+  background: #ffffff;
+  border: 5px solid #111111;
+  padding: 14px 22px;
+  width: fit-content;
+  letter-spacing: 0.5px;
+}
+
+.cover-deco { display: none; }

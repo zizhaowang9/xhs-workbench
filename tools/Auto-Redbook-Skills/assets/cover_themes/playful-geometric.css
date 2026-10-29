@@ -1,0 +1,71 @@
+/* ============================================================
+   封面主题：playful-geometric（活泼几何）
+   特征：紫粉渐变外框、奶油内页、大圆角、彩色圆点装饰、紫色标题。
+   ============================================================ */
+
+.cover-inner {
+  background: #fffdf8;
+  border: 10px solid #ffffff;
+  border-radius: 56px;
+  box-shadow: 0 24px 60px rgba(124, 58, 237, 0.28);
+  padding: 92px 86px;
+  overflow: hidden;
+}
+
+/* 右上角粉色大圆 */
+.cover-inner::before {
+  content: "";
+  position: absolute;
+  right: -110px;
+  top: -120px;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: #f9a8d4;
+  opacity: 0.55;
+}
+
+/* 左下角紫色圆环 */
+.cover-inner::after {
+  content: "";
+  position: absolute;
+  left: -150px;
+  bottom: -170px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: 28px solid #c4b5fd;
+  opacity: 0.55;
+}
+
+.cover-emoji {
+  font-size: 128px;
+  margin-bottom: 30px;
+  background: #f3e8ff;
+  border-radius: 32px;
+  padding: 10px 26px;
+  width: fit-content;
+  line-height: 1.1;
+}
+
+.cover-title {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  background-clip: border-box !important;
+  color: #7c3aed;
+  font-weight: 900;
+  letter-spacing: -1px;
+  text-align: left;
+  position: relative;
+  z-index: 2;
+}
+
+.cover-subtitle {
+  color: #db2777;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 2;
+}
+
+.cover-deco { display: none; }

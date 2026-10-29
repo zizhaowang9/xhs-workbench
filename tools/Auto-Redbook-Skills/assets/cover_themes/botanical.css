@@ -1,0 +1,68 @@
+/* ============================================================
+   封面主题：botanical（植物自然）
+   特征：米白纸面、墨绿细边框 + 外圈浅绿描边、右下大叶形圆环、衬线标题。
+   ============================================================ */
+
+.cover-inner {
+  background: #fbfaf3;
+  border: 2px solid #4a7c59;
+  border-radius: 30px;
+  box-shadow: 0 0 0 10px #e8f0e4, 0 14px 36px rgba(74, 124, 89, 0.16);
+  padding: 100px 92px;
+  overflow: hidden;
+}
+
+/* 右上角浅绿叶形圆 */
+.cover-inner::before {
+  content: "";
+  position: absolute;
+  right: -120px;
+  top: -120px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50% 0 50% 50%;
+  background: #8fbc8f;
+  opacity: 0.28;
+}
+
+/* 左下角细圆环 */
+.cover-inner::after {
+  content: "";
+  position: absolute;
+  left: -70px;
+  bottom: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  border: 3px solid #8fbc8f;
+  opacity: 0.5;
+}
+
+.cover-emoji {
+  font-size: 118px;
+  margin-bottom: 32px;
+}
+
+.cover-title {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  background-clip: border-box !important;
+  color: #2f5d3f;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: left;
+  line-height: 1.42;
+  position: relative;
+  z-index: 2;
+}
+
+.cover-subtitle {
+  color: #4a7c59;
+  font-weight: 400;
+  letter-spacing: 1.5px;
+  position: relative;
+  z-index: 2;
+}
+
+.cover-deco { display: none; }

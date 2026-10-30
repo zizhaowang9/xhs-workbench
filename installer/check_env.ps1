@@ -25,6 +25,7 @@ if (-not $Root) {
 $Root = $Root.TrimEnd('\')
 
 $cfg = Read-Config $Root
+Set-ProjectEnv $Root
 if (-not $cfg) {
     Write-Err "未找到配置文件：$(Join-Path $Root 'config\paths.json')"
     Write-Host '    这台电脑还没有安装，请先运行「安装.cmd」。' -ForegroundColor Yellow
@@ -207,3 +208,4 @@ Write-Host ''
 
 if ($state.files -and $state.deps -and $state.bridge -and $state.extension -and ($state.login -eq $true)) { exit 0 }
 exit 2
+

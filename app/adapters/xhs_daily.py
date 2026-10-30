@@ -151,9 +151,11 @@ JS_CLICK_DRAFT_BY_TITLE = """
   const T = %s;
   const norm = s => (s || '').replace(/\\s+/g, '');
   const items = [...document.querySelectorAll('.draft-item')];
-  const idx = items.findIndex(it => norm((it.querySelector('.draft-title-text') || {}).textContent) === norm(T));
-  if (idx < 0) return {ok: false, count: items.length, titles: items.map(it => ((it.querySelector('.draft-title-text') || {}).textContent || '').trim())};
-  const it = items[idx];
+  const matches = items.map((it, index) => ({it, index})).filter(({it}) => norm((it.querySelector('.draft-title-text') || {}).textContent) === norm(T));
+  if (matches.length !== 1) return {ok: false, reason: matches.length > 1 ? 'ambiguous' : 'not-found', count: matches.length,
+    titles: items.map(it => ((it.querySelector('.draft-title-text') || {}).textContent || '').trim()),
+    candidates: matches.map(({it, index}) => ({index, title: ((it.querySelector('.draft-title-text') || {}).textContent || '').trim(), time: ((it.querySelector('.draft-time') || {}).textContent || '').trim()}))};
+  const {it, index: idx} = matches[0];
   const btn = it.querySelector('.btn') || it;
   btn.click();
   return {ok: true, index: idx};
@@ -389,12 +391,12 @@ def compare_draft(title, raw_body, tags, images, detail):
     if _norm(got_title) != _norm(title):
         problems.append(f"标题不一致：本地「{title}」/ 草稿「{got_title}」")
 
-    # 2) 正文（平台会压缩空白，按去空白后的包含关系比较）
+    # 2) 正文：去除末行话题后精确比较（忽略平台空白差异）
     remote_text = _norm(detail.get("text"))
     local_text = _norm(raw_body)
     if not local_text:
         problems.append("本地正文是空的，无法比对")
-    elif local_text not in remote_text:
+    elif local_text != _norm(_split_content(detail.get("text") or "")[0]):
         problems.append(f"正文对不上：本地 {len(local_text)} 字，草稿 {len(remote_text)} 字（去空白）")
 
     # 3) 全部话题
@@ -406,12 +408,20 @@ def compare_draft(title, raw_body, tags, images, detail):
     if extra_tags:
         problems.append("草稿里多出话题：" + " ".join("#" + t for t in extra_tags))
 
-    # 4) 六张图 + 顺序（平台会压缩，只比顺序与宽高比，不比字节）
+    if remote_tags != tags:
+        problems.append("话题名称、数量或顺序不一致")
+    topic_nodes = [str(t).lstrip("#") for t in (detail.get("topic_nodes") or [])]
+    if topic_nodes != tags:
+        problems.append("话题节点未完整转换，或节点名称/顺序不一致")
+
+    # 4) 六图数量与尺寸。相同宽高比不能确认内容或顺序，需另行目检。
     slides = detail.get("slides", 0)
     if slides != 6:
         problems.append(f"图片数量异常：{slides}（应为 6）")
     imgs = detail.get("imgs") or []
     ratios = []
+    if len(images) != 6 or len(imgs) != 6:
+        problems.append("本地或草稿图片详情不完整，应均为 6 张")
     for local, remote in zip(images, imgs):
         size = _png_size(local)
         if not size or not remote:
@@ -439,6 +449,14 @@ def compare_draft(title, raw_body, tags, images, detail):
     }
 
 
+def should_resume_existing(state: dict, title: str) -> bool:
+    """An identified draft or failed attempt must be continued, never recreated."""
+    if state.get("stage") == "failed" or (state.get("draft") or {}).get("identity"):
+        return True
+    return (state.get("stage") in ("filled", "drafted", "verified", "unconfirmed", "failed")
+            and _norm(state.get("title")) == _norm(title))
+
+
 def cmd_fill_new(args) -> int:
     paths = load_paths()
     workdir = _workdir_from(args)
@@ -458,6 +476,7 @@ def cmd_fill_new(args) -> int:
         raise SystemExit("缺少图片：\n  " + "\n  ".join(missing))
 
     state = load_state(workdir)
+    resume_existing = should_resume_existing(state, title)
     state.update(
         version=1,
         workdir=str(workdir),
@@ -474,11 +493,11 @@ def cmd_fill_new(args) -> int:
         print("图片：")
         for p in images:
             print(f"  {p.name}  {p.stat().st_size} bytes")
-        save_state(workdir, {**state, "stage": "prepared", "prepared_at": _now()})
+        # A dry run must not mutate an existing or new draft lifecycle state.
         return 0
 
     # 已有草稿就不重建：交给 verify-draft 继续这一篇
-    if state.get("stage") in ("filled", "drafted", "verified", "unconfirmed") and _norm(state.get("title")) == _norm(title):
+    if resume_existing:
         print(f"这一篇已经在进行中（阶段：{state.get('stage')}，标题：{title}）")
         print("按「已存在草稿走原稿继续」的规则，本次不重新建稿、不重复上传。")
         print("下一步：运行 verify-draft 核实这篇草稿是否真的保存成功。")
@@ -487,6 +506,9 @@ def cmd_fill_new(args) -> int:
     page = make_page(paths)
     if not page.is_server_running() or not page.is_extension_connected():
         raise SystemExit("Bridge 未运行或扩展未连接，请先双击安装目录里的「启动助手.cmd」并检查环境。")
+
+    state.update(stage="unconfirmed", attempt_started_at=_now())
+    save_state(workdir, state)
 
     print(f"→ 打开发布页（标题 {len(title)} 字，正文 {len(raw_body)} 字，话题 {len(tags)} 个）")
     page.navigate(PUBLISH_URL)
@@ -617,17 +639,23 @@ def cmd_verify_draft(args) -> int:
     clicked = page.evaluate(JS_CLICK_DRAFT_BY_TITLE % json.dumps(title, ensure_ascii=False))
     if not (isinstance(clicked, dict) and clicked.get("ok")):
         titles = (clicked or {}).get("titles") or []
+        ambiguous = (clicked or {}).get("reason") == "ambiguous"
+        reason = (f"标题「{title}」对应多条草稿；未点击，请按保存时间核对原稿" if ambiguous
+                  else f"草稿箱里没有标题为「{title}」的草稿")
         state.update(
             stage="unconfirmed",
             verify={
                 "ok": None,
                 "checked_at": _now(),
-                "problems": [f"草稿箱里没有标题为「{title}」的草稿"],
+                "problems": [reason],
+                "draft_candidates": (clicked or {}).get("candidates") or [],
                 "draft_titles": titles,
             },
         )
         save_state(workdir, state)
-        print(f"核验结果：未确认 —— 没有找到标题为「{title}」的草稿。")
+        print("核验结果：未确认 —— " + reason)
+        if ambiguous:
+            print(json.dumps((clicked or {}).get("candidates"), ensure_ascii=False))
         shown = "、".join([t for t in titles if t]) or "（空）"
         print("现有草稿标题：" + shown)
         print("先核实是否真的保存过，不要直接重复上传。")
@@ -660,10 +688,12 @@ def cmd_verify_draft(args) -> int:
 
     ok = not problems
     state.update(
-        stage="verified" if ok else "failed",
+        stage="unconfirmed" if ok else "failed",
         draft={"identity": f"title:{title}", "opened_at": _now()},
         verify={
-            "ok": ok,
+            "ok": False,
+            "machine_ok": ok,
+            "image_content_order": "pending_visual_review",
             "checked_at": _now(),
             "problems": problems,
             "title": got_title,
@@ -677,11 +707,11 @@ def cmd_verify_draft(args) -> int:
     save_state(workdir, state)
 
     if ok:
-        print("核验结果：通过")
+        print("机器字段检查通过；六图内容与顺序待逐张目检，尚不能认定完整核验通过")
         print(f"  标题：{got_title}")
         print(f"  正文：{detail.get('chars')} 字（去空白）")
         print(f"  话题：{' '.join('#' + t for t in remote_tags) or '（无）'}")
-        print(f"  图片：{slides} 张，顺序已按宽高比核对")
+        print(f"  图片：{slides} 张，尺寸已检查；相同尺寸不能证明图片内容或顺序")
         return 0
 
     print("核验结果：不通过，需要人工复核")
@@ -721,3 +751,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

@@ -128,18 +128,21 @@ function Install-Uv($root) {
 }
 
 function Set-ProjectEnv($root) {
-    # 只设置当前进程级环境变量，不改全局 PATH
-    $env:UV_CACHE_DIR = Join-Path $root 'cache\uv'
-    $env:UV_PYTHON_INSTALL_DIR = Join-Path $root 'runtime\python'
-    $env:UV_PYTHON_BIN_DIR = Join-Path $root 'runtime\bin'
-    $env:TEMP = Join-Path $root 'tmp'
-    $env:TMP = Join-Path $root 'tmp'
-    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $root 'browsers'
+    $cfg = Read-Config $root
+    $values = @{
+        UV_CACHE_DIR = 'cache\uv'; UV_PYTHON_INSTALL_DIR = 'runtime\python'
+        UV_PYTHON_BIN_DIR = 'runtime\bin'; TEMP = 'tmp'; TMP = 'tmp'
+        PLAYWRIGHT_BROWSERS_PATH = 'browsers'
+    }
+    $fields = @{ UV_CACHE_DIR = 'uv_cache_dir'; UV_PYTHON_INSTALL_DIR = 'python_install_dir'; TEMP = 'tmp_dir'; TMP = 'tmp_dir'; PLAYWRIGHT_BROWSERS_PATH = 'playwright_browsers' }
+    foreach ($key in $values.Keys) {
+        $value = Join-Path $root $values[$key]
+        if ($cfg -and $fields.ContainsKey($key) -and $cfg.($fields[$key])) { $value = [string]$cfg.($fields[$key]) }
+        [Environment]::SetEnvironmentVariable($key, $value, 'Process')
+        if (-not (Test-Path -LiteralPath $value)) { New-Item -ItemType Directory -Path $value -Force | Out-Null }
+    }
     $env:PYTHONUTF8 = '1'
     $env:PYTHONIOENCODING = 'utf-8'
-    foreach ($d in @($env:UV_CACHE_DIR, $env:UV_PYTHON_INSTALL_DIR, $env:UV_PYTHON_BIN_DIR, $env:TEMP, $env:PLAYWRIGHT_BROWSERS_PATH)) {
-        if (-not (Test-Path -LiteralPath $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
-    }
 }
 
 function Get-PortOwner($port) {
@@ -238,3 +241,4 @@ function Invoke-Logged($exe, $argLine) {
     }
     return $code
 }
+

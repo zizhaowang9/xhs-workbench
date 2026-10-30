@@ -1,0 +1,25 @@
+name: Windows install smoke
+on:
+  push:
+    branches: ['validation/1.1.1']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fresh directory install and offline render (no model or XHS calls)
+        shell: powershell
+        run: '& .\tests\windows_smoke.ps1 -Install'
+      - name: Collect local render and install logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-smoke-results
+          if-no-files-found: warn
+          path: |
+            ${{ env.XHS_SMOKE_ROOT }}/runs/smoke-mock/images/*.png
+            ${{ env.XHS_SMOKE_ROOT }}/logs/*.log

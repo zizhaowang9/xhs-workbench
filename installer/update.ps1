@@ -44,6 +44,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $Root 'config\paths.json'))) {
     Fail2 ('这不是工作台安装目录：' + $Root) '确认路径；1.0.1 的安装里应该有 config\paths.json'
 }
 Write-Ok ('安装根：' + $Root)
+Set-ProjectEnv $Root
 
 # ---------- 2 仓库 ----------
 if (-not $Repo) { $Repo = Join-Path $Root 'team-repo' }
@@ -60,7 +61,7 @@ $git = $gitCmd.Source
 Write-Ok ('Git：' + $git)
 
 # ---------- 4 日志 ----------
-$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $logDir = Join-Path $Root 'logs'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 $logFile = Join-Path $logDir ('update-' + $stamp + '.log')
@@ -93,7 +94,7 @@ $branch = (($rg1.lines) -join '').Trim()
 $rg2 = Invoke-Git $git @('-C', $Repo, 'remote', 'get-url', 'origin')
 if ($rg2.code -eq 0) { $remote = (($rg2.lines) -join '').Trim() } else { $remote = '' }
 Write-Info2 ('分支：' + $branch)
-Write-Info2 ('远端：' + $remote)
+Write-Info2 '正在核对 origin 与 main 跟踪配置'
 if ($branch -ne 'main') {
     Fail2 ('当前分支是 ' + $branch + '，不是 main') ('切回 main 后再更新：git -C "' + $Repo + '" checkout main')
 }
@@ -108,13 +109,22 @@ if ($dirty.Count -gt 0) {
 }
 Write-Ok '仓库干净（没有未提交的本地修改）'
 
+try { Assert-TeamRepository $git $Repo } catch { Fail2 $_.Exception.Message '请核对仓库配置后重试，不要强制覆盖' }
+
 # ---------- 6 拉取 ----------
 Write-Step '第 4 步 / 从远端拉取'
-$rg4 = Invoke-Git $git @('-C', $Repo, 'fetch', '--all', '--tags', '--prune')
+$rg4 = Invoke-Git $git @('-C', $Repo, 'fetch', 'origin', 'main', '--tags')
 foreach ($l in $rg4.lines) { if ($l) { Write-Info2 $l } }
 if ($rg4.code -ne 0) { Fail2 'git fetch 失败（网络或权限）' '检查网络/代理与仓库访问权限后重试' }
+if ($CheckOnly) {
+    Write-Info2 '检查完成：已获取远端信息，没有合并或应用文件。'
+    try { Stop-Transcript | Out-Null } catch { }
+    exit 0
+}
+$ahead = Invoke-Git $git @('-C', $Repo, 'rev-list', '--count', 'origin/main..HEAD')
+if ($ahead.code -ne 0 -or ($ahead.lines -join '').Trim() -ne '0') { Fail2 '本地 main 含远端没有的提交，停止更新' '请交由发布端核对，不要 reset 或强推' }
 $before = ((Invoke-Git $git @('-C', $Repo, 'rev-parse', 'HEAD')).lines -join '').Trim()
-$rg5 = Invoke-Git $git @('-C', $Repo, 'pull', '--ff-only')
+$rg5 = Invoke-Git $git @('-C', $Repo, 'merge', '--ff-only', 'origin/main')
 foreach ($l in $rg5.lines) { if ($l) { Write-Info2 $l } }
 if ($rg5.code -ne 0) {
     Fail2 'git pull --ff-only 失败：本地与远端已分叉' '不要强推、不要 reset --hard；把窗口里的提示发给发布端'
@@ -125,13 +135,9 @@ if ($before -eq $pulled) { Write-Ok ('仓库已是最新：' + $pulled) }
 else { Write-Ok ('已拉取提交：' + $pulled) }
 Write-Ok ('仓库版本号：' + $pkgVer)
 
-if ($CheckOnly) {
-    Write-Info2 '只检查模式：没有改动任何文件'
-    try { Stop-Transcript | Out-Null } catch { }
-    exit 0
-}
 
 try {
+    Save-WorkbenchState $Root ([ordered]@{ pulled_commit = $pulled; applied_commit = $(if ($state) { [string]$state.applied_commit } else { '' }); last_result = 'applying'; backup_dir = $backupRoot; version = $prevVersion })
     # ---------- 7 备份 + 应用 ----------
     Write-Step '第 5 步 / 备份并应用公共文件'
     $r = Invoke-SharedApply $Repo $Root $stamp $backupRoot
@@ -158,11 +164,13 @@ try {
     $renderSha = Get-LockSha $renderLock
     $xhsSha = Get-LockSha $xhsLock
     $needDeps = $false
-    if ($prevRender -and $renderSha -and $prevRender -ne $renderSha) { $needDeps = $true }
-    if ($prevXhs -and $xhsSha -and $prevXhs -ne $xhsSha) { $needDeps = $true }
+    if ($renderSha -and $prevRender -ne $renderSha) { $needDeps = $true }
+    if ($xhsSha -and $prevXhs -ne $xhsSha) { $needDeps = $true }
     if ($needDeps) {
         Write-Warn2 '依赖锁定清单有变化，同步依赖（不会重装整个环境）'
         $uv = Find-Uv $Root
+        if (-not $uv) { throw '依赖需同步但未找到 uv；运行安装.cmd 修复' }
+        if (-not (Test-Path -LiteralPath $renderLock) -or -not (Test-Path -LiteralPath $xhsLock)) { throw '缺少依赖锁文件；停止应用' }
         $xhsRepo = Join-Path $Root 'tools\xiaohongshu-skills'
         if ($uv -and (Test-Path -LiteralPath $xhsLock)) {
             $env:UV_PROJECT_ENVIRONMENT = (Join-Path $xhsRepo '.venv')
@@ -174,6 +182,7 @@ try {
             Write-Ok '小红书依赖已同步'
         }
         $renderPy = Join-Path $Root 'tools\Auto-Redbook-Skills\.venv\Scripts\python.exe'
+        if (-not (Test-Path -LiteralPath $renderPy)) { throw '缺少渲染环境；运行安装.cmd 修复' }
         if ($uv -and (Test-Path -LiteralPath $renderPy) -and (Test-Path -LiteralPath $renderLock)) {
             $code = Invoke-Logged $uv ('pip install --python "' + $renderPy + '" -r "' + $renderLock + '"')
             if ($code -ne 0) { throw '渲染依赖同步失败' }
@@ -229,15 +238,14 @@ try {
 catch {
     $msg = [string]$_.Exception.Message
     Write-Err ('更新中断：' + $msg)
-    $restored = 0
-    if (Test-Path -LiteralPath $backupRoot) { $restored = Restore-FromBackup $backupRoot $Root }
-    if ($restored -gt 0) { Write-Warn2 ('已从备份恢复 ' + $restored + ' 个文件（' + $backupRoot + '）') }
+    # Do not claim a complete rollback: dependencies and newly created files may remain.
+    Write-Warn2 '文件可能已部分应用、依赖可能已变化；未执行整体回滚。修复后重新运行更新。'
     $failed = [ordered]@{
         version         = $prevVersion
         pulled_commit   = $pulled
-        applied_commit  = ''
+        applied_commit  = $(if ($state) { [string]$state.applied_commit } else { '' })
         applied_at      = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-        last_result     = 'failed'
+        last_result     = 'failed_partial_apply'
         last_error      = $msg
         backup_dir      = $backupRoot
         render_lock_sha = $prevRender
@@ -246,12 +254,13 @@ catch {
         remote          = $remote
         branch          = $branch
     }
-    try { Save-WorkbenchState $Root $failed } catch { }
+    try { Save-WorkbenchState $Root $failed } catch { Write-Err '失败状态无法写入；请保留日志并停止使用，修复目录权限后重试。' }
     Write-Host ('日志：' + $logFile) -ForegroundColor Yellow
-    Write-Host '处理：按上面的提示修正后重新双击「更新工作台.cmd」；个人资料已在备份目录里，不会丢。' -ForegroundColor Yellow
+    Write-Host '处理：按上面的提示修正后重新运行更新；本轮备份仅含被覆盖的公共文件，不代表完整回滚。' -ForegroundColor Yellow
     try { Stop-Transcript | Out-Null } catch { }
     exit 1
 }
 
 try { Stop-Transcript | Out-Null } catch { }
 exit 0
+

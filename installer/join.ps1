@@ -46,6 +46,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $Root 'config\paths.json'))) {
     Fail3 ('这里不是工作台安装目录：' + $Root) '先完成 1.0.1 安装（安装.cmd），或填对安装目录'
 }
 $cfg = Read-Config $Root
+Set-ProjectEnv $Root
 $curVer = Get-PkgVersion $Root
 if ($curVer -like '0.0.0*' -and $cfg -and $cfg.version) { $curVer = [string]$cfg.version }
 Write-Ok ('安装根：' + $Root)
@@ -74,11 +75,9 @@ Write-Ok ($gitVer + '  ' + $git)
 Write-Step '第 3 步 / 确定仓库目录'
 $Repo = Join-Path $Root 'team-repo'
 if (Test-Path -LiteralPath (Join-Path $Repo '.git')) {
-    Write-Warn2 ('已经接入过：' + $Repo)
-    Write-Info2 '以后直接用安装目录里的「更新工作台.cmd」更新，不需要再跑本脚本。'
-    $cmdSrc = Join-Path $PSScriptRoot '..\更新工作台.cmd'
-    if (Test-Path -LiteralPath $cmdSrc) { Copy-Item -LiteralPath $cmdSrc -Destination (Join-Path $Root '更新工作台.cmd') -Force }
-    exit 0
+    Write-Info2 '仓库已存在；继续检查并应用，修复上次未完成的接入。'
+    & (Join-Path $PSScriptRoot 'update.ps1') -Root $Root -Repo $Repo
+    exit $LASTEXITCODE
 }
 Write-Info2 ('仓库目录：' + $Repo)
 
@@ -102,7 +101,9 @@ if (-not $Url) {
     Write-Host '  或重新运行：powershell -File installer\join.ps1 -Root "' + $Root + '" -Url "仓库地址"' -ForegroundColor Yellow
     exit 3
 }
-Write-Info2 ('仓库地址：' + $Url)
+$normalizedUrl = $Url.TrimEnd('/') -replace '\.git$', ''
+if ($normalizedUrl -notin @('https://github.com/zizhaowang9/xhs-workbench', 'git@github.com:zizhaowang9/xhs-workbench')) { Fail3 '仓库地址不是发布仓库 zizhaowang9/xhs-workbench' '请使用发布仓库地址，不在地址中嵌入凭据' 3 }
+Write-Info2 '仓库地址已核对：zizhaowang9/xhs-workbench'
 
 # ---------- 5 备份个人资料 ----------
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -136,6 +137,9 @@ $pkgVer = Get-PkgVersion $Repo
 Write-Ok ('仓库版本号：' + $pkgVer)
 
 try {
+    Assert-TeamRepository $git $Repo
+    $previousState = Get-WorkbenchState $Root
+    Save-WorkbenchState $Root ([ordered]@{ pulled_commit = $pulled; applied_commit = $(if ($previousState) { [string]$previousState.applied_commit } else { '' }); last_result = 'applying'; backup_dir = $backupRoot })
     # ---------- 7 应用公共文件 ----------
     Write-Step '第 6 步 / 应用程序与公共知识库'
     $r = Invoke-SharedApply $Repo $Root $stamp (Join-Path $backupRoot 'applied')
@@ -219,7 +223,8 @@ try {
 }
 catch {
     Write-Err ('接入中断：' + [string]$_.Exception.Message)
-    Write-Warn2 ('你的资料已备份在：' + $backupRoot)
+    Write-Warn2 ('接入可能部分应用；未执行整体回滚。备份：' + $backupRoot)
+    try { Save-WorkbenchState $Root ([ordered]@{ pulled_commit = $pulled; applied_commit = $(if ($previousState) { [string]$previousState.applied_commit } else { '' }); last_result = 'failed_partial_apply'; backup_dir = $backupRoot; last_error = [string]$_.Exception.Message }) } catch { Write-Err '失败状态无法保存；请保留日志并修复目录权限。' }
     Write-Host ('日志：' + $logFile) -ForegroundColor Yellow
     try { Stop-Transcript | Out-Null } catch { }
     exit 1
@@ -227,3 +232,4 @@ catch {
 
 try { Stop-Transcript | Out-Null } catch { }
 exit 0
+

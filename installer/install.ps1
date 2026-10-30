@@ -327,6 +327,10 @@ try {
         else { Write-Ok '小红书 CLI 可运行，关键子命令齐全' }
     }
 
+    $workbenchCheck = Test-Workbench $Root
+    foreach ($line in $workbenchCheck.lines) { Write-Info2 ([string]$line) }
+    if (-not $workbenchCheck.ok) { $okAll = $false }
+
     $state = [ordered]@{
         version    = (Get-PkgVersion $pkg)
         installed  = $okAll
@@ -351,6 +355,7 @@ try {
     }
 
     Write-Host ''
+    if (-not (Test-ModelConfig $Root)) { Write-Warn2 '程序已安装、写稿模型待配置（仅本地检查，未进行真实付费调用）' }
     Write-Host '=========================================' -ForegroundColor Green
     if ($okAll) { Write-Host '  安装完成' -ForegroundColor Green }
     else { Write-Host '  安装基本完成，有项目需要复查' -ForegroundColor Yellow }
@@ -384,3 +389,4 @@ catch {
 
 try { Stop-Transcript | Out-Null } catch { }
 exit 0
+

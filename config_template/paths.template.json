@@ -1,6 +1,6 @@
 {
   "_说明": "本文件是占位模板，不要直接使用。安装器会在 <安装根>\\config\\paths.json 生成该机的真实路径。",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "root": "<安装根目录>",
   "project_root": "<安装根目录>",
   "xhs_repo": "<安装根目录>\\tools\\xiaohongshu-skills",
@@ -19,3 +19,4 @@
   "bridge_url": "ws://localhost:9333",
   "bridge_port": 9333
 }
+

@@ -167,11 +167,32 @@ function Save-WorkbenchState($Root, $State) {
 }
 
 function Test-ModelConfig($Root) {
-    if ($env:XHS_GPT_API_KEY) { return $true }
-    foreach ($n in @('config\gpt.local.json', 'config\gpt.deepseek.local.json')) {
-        if (Test-Path -LiteralPath (Join-Path $Root $n)) { return $true }
+    # Inspect configuration only. Never print the parsed data or contact a provider.
+    $p = Join-Path $Root 'config\gpt.local.json'
+    if (-not (Test-Path -LiteralPath $p)) { return $false }
+    try {
+        $c = Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json
+        if (-not ([string]$c.provider).Trim() -or -not ([string]$c.model).Trim()) { return $false }
+        if ($c.protocol -notin @('responses', 'chat_completions')) { return $false }
+        $uri = $null
+        if (-not [Uri]::TryCreate([string]$c.base_url, [UriKind]::Absolute, [ref]$uri)) { return $false }
+        if ($uri.Scheme -notin @('https', 'http') -or -not $uri.Host) { return $false }
+        $key = ([string]$c.api_key).Trim()
+        $keyEnv = [string]$c.api_key_env
+        if (-not $keyEnv) { $keyEnv = 'XHS_GPT_API_KEY' }
+        if (-not $key) { $key = [Environment]::GetEnvironmentVariable($keyEnv, 'Process') }
+        return (-not [string]::IsNullOrWhiteSpace($key))
+    } catch { return $false }
+}
+
+function Assert-TeamRepository($GitExe, $Repo) {
+    $origin = Invoke-Git $GitExe @('-C', $Repo, 'remote', 'get-url', 'origin')
+    $url = ($origin.lines -join '').Trim().TrimEnd('/') -replace '\.git$', ''
+    if ($origin.code -ne 0 -or $url -notin @('https://github.com/zizhaowang9/xhs-workbench', 'git@github.com:zizhaowang9/xhs-workbench')) {
+        throw 'origin 不是发布仓库 zizhaowang9/xhs-workbench；停止更新。'
     }
-    return $false
+    $upstream = Invoke-Git $GitExe @('-C', $Repo, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}')
+    if ($upstream.code -ne 0 -or ($upstream.lines -join '').Trim() -ne 'origin/main') { throw 'main 必须跟踪 origin/main；停止更新。' }
 }
 
 function Get-LockSha($path) {
@@ -194,6 +215,16 @@ function Test-Workbench($Root) {
         'knowledge\03-运营知识\00-知识目录.md',
         'tools\gpt-writer\gpt_write.py',
         'tools\gpt-writer\kb_search.py',
+        'app\adapters\run_writer.py',
+        'app\adapters\run_render.py',
+        'app\adapters\xhs_daily.py',
+        'tools\xiaohongshu-skills\scripts\cli.py',
+        'tools\Auto-Redbook-Skills\scripts\render_xhs.py',
+        'knowledge\04-案例与训练\03-执行反馈.md',
+        'knowledge\05-内容经营\01-系列计划.md',
+        'knowledge\05-内容经营\02-系列进度.md',
+        'knowledge\05-内容经营\03-历史作品.md',
+        'knowledge\06-工作记录\02-草稿台账.md',
         'installer\update.ps1',
         '更新工作台.cmd'
     )
@@ -211,5 +242,21 @@ function Test-Workbench($Root) {
         else { [void]$res.Add('知识库路径不可用：' + $kb); $bad++ }
     }
     else { [void]$res.Add('paths.json 缺失或无法解析'); $bad++ }
+    if ($cfg) {
+        Set-ProjectEnv $Root
+        $xhsPy = Join-Path $Root 'tools\xiaohongshu-skills\.venv\Scripts\python.exe'
+        $renderPy = Join-Path $Root 'tools\Auto-Redbook-Skills\.venv\Scripts\python.exe'
+        if ($cfg.xhs_python) { $xhsPy = [string]$cfg.xhs_python }
+        if ($cfg.render_python) { $renderPy = [string]$cfg.render_python }
+        foreach ($check in @(
+            @{ Py = $xhsPy; Code = 'import websockets, requests, python_socks'; Name = '小红书独立环境' },
+            @{ Py = $renderPy; Code = 'import markdown, yaml; from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); b.close(); p.stop()'; Name = '渲染环境与 Chromium 离线启动' }
+        )) {
+            if ((Test-Path -LiteralPath $check.Py) -and (Test-PyImport $check.Py $check.Code)) { [void]$res.Add('通过：' + $check.Name) }
+            else { [void]$res.Add('失败：' + $check.Name + '；重新运行安装.cmd 修复'); $bad++ }
+        }
+        if ($xhsPy -eq $renderPy) { [void]$res.Add('失败：两个虚拟环境不能共用解释器'); $bad++ }
+    }
     return [pscustomobject]@{ ok = ($bad -eq 0); bad = $bad; lines = $res }
 }
+

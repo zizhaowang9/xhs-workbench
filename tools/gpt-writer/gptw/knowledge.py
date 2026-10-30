@@ -115,7 +115,10 @@ def sections(path) -> dict:
     """
     if not path:
         return {}
-    text = _read(Path(path))
+    target = Path(path)
+    if not target.is_absolute():
+        target = knowledge_dir() / target
+    text = _read(target)
     if not text:
         return {}
     body = _strip_front(text)
@@ -147,7 +150,12 @@ FIXED_FILES = [
     ("账号定位", "01-业务总纲/01-账号定位.md"),
     ("已确认业务事实", "01-业务总纲/03-已确认业务事实.md"),
     ("当前有效规则", "01-业务总纲/04-当前有效规则.md"),
-    ("表达标准与主人反馈", "01-业务总纲/02-表达标准与反馈.md"),
+    ("公共表达标准", "01-业务总纲/02-表达标准与反馈.md"),
+    ("个人执行反馈", "04-案例与训练/03-执行反馈.md"),
+    ("系列计划", "05-内容经营/01-系列计划.md"),
+    ("系列进度", "05-内容经营/02-系列进度.md"),
+    ("历史作品", "05-内容经营/03-历史作品.md"),
+    ("草稿台账", "06-工作记录/02-草稿台账.md"),
 ]
 
 
@@ -156,7 +164,7 @@ def fixed_context() -> tuple[list[dict], list[str]]:
     base = knowledge_dir()
     out, missing = [], []
     for title, rel in FIXED_FILES:
-        text = _read(base / rel.replace("/", "\\"))
+        text = _read(base.joinpath(*rel.split("/")))
         if not text:
             missing.append(rel)
             continue
@@ -377,3 +385,4 @@ def approved_examples(exclude: Path | None = None, limit: int = 1) -> tuple[list
     if not out:
         notes.append("白名单中没有可用作品，本次不提供写作范例")
     return out, notes
+

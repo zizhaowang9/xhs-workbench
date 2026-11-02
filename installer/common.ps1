@@ -165,7 +165,7 @@ function Get-BridgeScriptPath($root, $cfg) {
     return (Join-Path $root 'tools\xiaohongshu-skills\scripts\bridge_server.py')
 }
 
-function Test-BridgeProbe($root, $port, $cfg) {
+function Test-BridgeProbe($root, $port, $cfg, $observedScript = '') {
     # 只读探测：连上 ws 问服务自己是谁。不启动、不关闭、不改动任何进程。
     if (-not $cfg) { $cfg = Read-Config $root }
     if (-not $cfg) { return $null }
@@ -174,7 +174,9 @@ function Test-BridgeProbe($root, $port, $cfg) {
     $probe = Join-Path $PSScriptRoot 'bridge_probe.py'
     if (-not (Test-Path -LiteralPath $probe)) { return $null }
     # Argument binding preserves spaces/Chinese without cmd.exe quote stripping.
-    $raw = & $py $probe --port $port 2>$null
+    $probeArgs = @($probe, '--port', $port, '--root', $root, '--script', (Get-BridgeScriptPath $root $cfg))
+    if ($observedScript) { $probeArgs += @('--observed-script', $observedScript) }
+    $raw = & $py @probeArgs 2>$null
     if (-not $raw) { return $null }
     try { return (($raw | Select-Object -Last 1) | ConvertFrom-Json) } catch { return $null }
 }
@@ -223,22 +225,34 @@ function Test-BridgeOfRoot($root, $port, $cfg) {
     }
 
     # 只读探测服务：补扩展连接状态；命令行判不出归属时才用服务自报的安装根
-    $probe = Test-BridgeProbe $root $port $cfg
+    $probe = Test-BridgeProbe $root $port $cfg $scriptPath
+    # Canonicalize the parsed command path locally; a foreign root claim cannot
+    # override an absolute script belonging to another installation.
+    if ($scriptPath -and $probe -and $probe.observed_script_path -and $probe.expected_script_path) {
+        $sameRoot = ([string]$probe.observed_script_path).TrimEnd('\').Equals(
+            ([string]$probe.expected_script_path).TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)
+    }
+    $healthy = [bool]($probe -and $probe.reachable)
+    if ($healthy -and $null -ne $probe.pid -and $null -ne $owner.Pid -and ([string]$probe.pid -ne [string]$owner.Pid)) {
+        $healthy = $false
+    }
     $ext = $null
-    if ($probe -and $probe.reachable) {
+    if ($healthy) {
         if ($null -ne $probe.extension) { $ext = [bool]$probe.extension }
         if (-not $scriptPath) { $via = 'ping' }
         if ($null -eq $sameRoot) {
             if ($probe.root) {
                 $pr = ([string]$probe.root).TrimEnd('\').ToLower()
-                $er = ([string]$root).TrimEnd('\').ToLower()
+                $expectedRoot = $root
+                if ($probe.expected_root) { $expectedRoot = $probe.expected_root }
+                $er = ([string]$expectedRoot).TrimEnd('\').ToLower()
                 if ($pr -eq $er) { $sameRoot = $true } else { $sameRoot = $false }
                 $scriptPath = [string]$probe.root
                 $via = 'ping'
             }
         }
     }
-    return [pscustomobject]@{ State = 'running'; Owner = $owner; SameRoot = $sameRoot; ScriptPath = $scriptPath; Extension = $ext; Healthy = [bool]($probe -and $probe.reachable); Via = $via }
+    return [pscustomobject]@{ State = 'running'; Owner = $owner; SameRoot = $sameRoot; ScriptPath = $scriptPath; Extension = $ext; Healthy = $healthy; Via = $via }
 }
 
 function Test-PyImport($py, $code) {

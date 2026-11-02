@@ -41,12 +41,16 @@ try {
     Assert-Bridge ($probe -and $probe.reachable) 'Actual run_bridge.ps1 did not start a healthy Bridge.'
     $serverPid = [int]$probe.pid
     Assert-Bridge ($serverPid -gt 0) 'Bridge did not return its PID.'
-    Assert-Bridge ($probe.root -eq $Root) 'Bridge root did not preserve the Chinese/space installation path.'
-    Assert-Bridge ($probe.script_path -eq (Get-BridgeScriptPath $Root $cfg)) 'Bridge script identity differs from installation.'
+    Assert-Bridge ($probe.expected_root -and $probe.root -eq $probe.expected_root) ('Bridge root differs: actual=' + $probe.root + '; expected=' + $probe.expected_root)
+    Assert-Bridge ($probe.expected_script_path -and $probe.script_path -eq $probe.expected_script_path) ('Bridge script differs: actual=' + $probe.script_path + '; expected=' + $probe.expected_script_path)
     Assert-Bridge ($probe.extension -eq $false) 'No browser extension should be attached in CI.'
     $owned = Test-BridgeOfRoot $Root $port $cfg
     Assert-Bridge ($owned.SameRoot -eq $true -and $owned.Healthy -eq $true) 'Healthy installed Bridge was not recognized.'
     Assert-Bridge ([int]$owned.Owner.Pid -eq $serverPid) 'Ping PID differs from the actual Windows listener.'
+    $aliasCfg = $cfg | ConvertTo-Json -Depth 6 | ConvertFrom-Json
+    $aliasCfg.xhs_repo = Split-Path -Parent (Split-Path -Parent $probe.expected_script_path)
+    $alias = Test-BridgeOfRoot $probe.expected_root $port $aliasCfg
+    Assert-Bridge ($alias.SameRoot -eq $true -and $alias.Healthy -eq $true) 'Short/long Windows path aliases were treated as different installations.'
 
     # A real second launcher invocation must reuse this PID, not create another server.
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'installer\start_bridge.ps1') -Root $Root

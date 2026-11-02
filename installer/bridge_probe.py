@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 import sys
 
 
@@ -20,10 +21,21 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=9333)
     ap.add_argument("--timeout", type=float, default=3.0)
+    ap.add_argument("--root", default=None)
+    ap.add_argument("--script", default=None)
+    ap.add_argument("--observed-script", default=None)
     args = ap.parse_args()
 
     out = {"reachable": False, "root": None, "extension": None, "pid": None, "script_path": None, "error": ""}
+    out.update(expected_root=None, expected_script_path=None, observed_script_path=None)
     try:
+        # Resolve local expectations using the same Windows path rules as the server.
+        # These values come from our caller, not from the listening process.
+        for key, value in (("expected_root", args.root),
+                           ("expected_script_path", args.script),
+                           ("observed_script_path", args.observed_script)):
+            if value:
+                out[key] = str(Path(value).resolve())
         from websockets.sync.client import connect
 
         with connect(f"ws://localhost:{args.port}", open_timeout=args.timeout, close_timeout=1) as ws:

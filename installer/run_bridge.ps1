@@ -2,7 +2,7 @@
 # 由「启动助手.cmd」通过 start_bridge.ps1 在本窗口内启动；窗口关闭即服务停止。
 # 只使用本安装目录的 Python 与源码，不使用开发机上的任何路径或后台任务。
 
-param([string]$Root = '')
+param([string]$Root = '', [switch]$NoPause)
 
 $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -22,7 +22,7 @@ $cfg = Read-Config $Root
 if (-not $cfg) {
     Write-Host "未找到配置：$(Join-Path $Root 'config\paths.json')" -ForegroundColor Red
     Write-Host '请先运行「安装.cmd」。'
-    Read-Host '按回车关闭窗口'
+    if (-not $NoPause) { Read-Host '按回车关闭窗口' }
     exit 1
 }
 
@@ -50,18 +50,21 @@ $server = Join-Path $cfg.xhs_repo 'scripts\bridge_server.py'
 if (-not (Test-Path -LiteralPath $server)) {
     Write-Host "缺少 Bridge 服务文件：$server" -ForegroundColor Red
     try { Stop-Transcript | Out-Null } catch { }
-    Read-Host '按回车关闭窗口'
+    if (-not $NoPause) { Read-Host '按回车关闭窗口' }
     exit 1
 }
 
 Set-Location -LiteralPath $cfg.xhs_repo
+$LASTEXITCODE = $null
 & $cfg.xhs_python $server --port $cfg.bridge_port --root $Root
 
 $code = $LASTEXITCODE
+if ($null -eq $code) { $code = 1 }
 Write-Host ''
 Write-Host "Bridge 进程已退出（退出码 $code）。" -ForegroundColor Yellow
 Write-Host "日志：$logFile"
 try { Stop-Transcript | Out-Null } catch { }
 Write-Host ''
-Read-Host '按回车关闭窗口'
-exit 0
+if (-not $NoPause) { Read-Host '按回车关闭窗口' }
+exit $code
+

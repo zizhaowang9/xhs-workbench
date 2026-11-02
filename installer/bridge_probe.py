@@ -22,7 +22,7 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=3.0)
     args = ap.parse_args()
 
-    out = {"reachable": False, "root": None, "extension": None, "pid": None, "error": ""}
+    out = {"reachable": False, "root": None, "extension": None, "pid": None, "script_path": None, "error": ""}
     try:
         from websockets.sync.client import connect
 
@@ -30,18 +30,23 @@ def main() -> int:
             ws.send(json.dumps({"role": "cli", "method": "ping_server"}))
             raw = ws.recv(timeout=args.timeout)
         msg = json.loads(raw)
-        res = msg.get("result") or {}
+        res = msg.get("result") if isinstance(msg, dict) else None
+        if not isinstance(res, dict) or not isinstance(res.get("extension_connected"), bool):
+            raise ValueError("Invalid ping_server response")
         out["reachable"] = True
         out["root"] = res.get("root")
         ext = res.get("extension_connected")
         out["extension"] = None if ext is None else bool(ext)
         out["pid"] = res.get("pid")
+        out["script_path"] = res.get("script_path")
     except Exception as exc:  # 连不上就是连不上，如实返回
         out["error"] = f"{type(exc).__name__}: {exc}"
 
-    print(json.dumps(out, ensure_ascii=False))
+    # ASCII JSON survives redirected Windows code pages; JSON readers restore Unicode.
+    print(json.dumps(out, ensure_ascii=True))
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
+

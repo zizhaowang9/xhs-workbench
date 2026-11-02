@@ -102,9 +102,14 @@ elseif ($bridge.State -eq 'occupied') {
     Write-Host '    处理：关闭占用该端口的程序，或重启电脑后再次双击「启动助手.cmd」。' -ForegroundColor Yellow
 }
 else {
-    if ($bridge.SameRoot -eq $true) {
+    if ($bridge.SameRoot -eq $true -and $bridge.Healthy -eq $true) {
         Write-Ok "Bridge 正在运行（PID $($bridge.Owner.Pid)），属于本安装目录"
         $bridgeOk = $true
+    }
+    elseif ($bridge.SameRoot -eq $true) {
+        Write-Warn2 "本安装目录的 Bridge 占用端口（PID $($bridge.Owner.Pid)），但服务状态探测失败"
+        Write-Host '    请查看 Bridge 窗口及日志；端口开放不代表服务已经就绪。' -ForegroundColor Yellow
+        $bridgeOk = $false
     }
     elseif ($bridge.SameRoot -eq $false) {
         Write-Warn2 "端口 $port 上的 Bridge 属于另一个安装目录：$($bridge.ScriptPath)"
@@ -208,4 +213,5 @@ Write-Host ''
 
 if ($state.files -and $state.deps -and $state.bridge -and $state.extension -and ($state.login -eq $true)) { exit 0 }
 exit 2
+
 

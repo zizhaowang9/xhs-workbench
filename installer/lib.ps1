@@ -219,6 +219,9 @@ function Test-Workbench($Root) {
         'app\adapters\run_render.py',
         'app\adapters\xhs_daily.py',
         'tools\xiaohongshu-skills\scripts\cli.py',
+        'tools\xiaohongshu-skills\scripts\bridge_server.py',
+        'installer\run_bridge.ps1',
+        'installer\bridge_probe.py',
         'tools\Auto-Redbook-Skills\scripts\render_xhs.py',
         'knowledge\04-案例与训练\03-执行反馈.md',
         'knowledge\05-内容经营\01-系列计划.md',
@@ -256,7 +259,20 @@ function Test-Workbench($Root) {
             else { [void]$res.Add('失败：' + $check.Name + '；重新运行安装.cmd 修复'); $bad++ }
         }
         if ($xhsPy -eq $renderPy) { [void]$res.Add('失败：两个虚拟环境不能共用解释器'); $bad++ }
+        # 不占用端口、不连接账号：验证启动器实际传入的参数可以被服务端解析。
+        $bridgeServer = Get-BridgeScriptPath $Root $cfg
+        if ((Test-Path -LiteralPath $xhsPy) -and (Test-Path -LiteralPath $bridgeServer)) {
+            $help = & $xhsPy $bridgeServer --help
+            $helpCode = $LASTEXITCODE
+            $helpText = $help -join [Environment]::NewLine
+            if ($helpCode -eq 0 -and $helpText.Contains('--root') -and $helpText.Contains('--port')) {
+                [void]$res.Add('通过：Bridge 启动参数兼容（--root / --port；未启动服务）')
+            }
+            else { [void]$res.Add('失败：Bridge 服务端与启动器参数不兼容；请更新完整公共文件'); $bad++ }
+        }
+        else { [void]$res.Add('失败：无法检查 Bridge 启动参数'); $bad++ }
     }
     return [pscustomobject]@{ ok = ($bad -eq 0); bad = $bad; lines = $res }
 }
+
 

@@ -15,6 +15,8 @@ import argparse
 import asyncio
 import json
 import logging
+import os
+from pathlib import Path
 import sys
 import uuid
 from typing import Any
@@ -26,7 +28,8 @@ logger = logging.getLogger("xhs-bridge")
 
 
 class BridgeServer:
-    def __init__(self) -> None:
+    def __init__(self, root: str | None = None) -> None:
+        self.root = root
         self._extension_ws: ServerConnection | None = None
         self._pending: dict[str, asyncio.Future[Any]] = {}
 
@@ -81,7 +84,12 @@ class BridgeServer:
         # 特殊命令：查询 server/extension 状态，无需转发
         if msg.get("method") == "ping_server":
             await ws.send(json.dumps({
-                "result": {"extension_connected": self._extension_ws is not None}
+                "result": {
+                    "extension_connected": self._extension_ws is not None,
+                    "root": self.root,
+                    "pid": os.getpid(),
+                    "script_path": str(Path(__file__).resolve()),
+                }
             }))
             return
 
@@ -108,8 +116,21 @@ class BridgeServer:
             await ws.send(json.dumps({"error": str(e)}))
 
 
-async def main(port: int) -> None:
-    server = BridgeServer()
+def resolve_root(root: str | None) -> str | None:
+    if root:
+        return str(Path(root).resolve())
+    script = Path(__file__).resolve()
+    # Only infer the workbench root from the known installed layout and config.
+    if (script.parent.name == "scripts" and script.parent.parent.name == "xiaohongshu-skills"
+            and script.parent.parent.parent.name == "tools"):
+        candidate = script.parents[3]
+        if (candidate / "config" / "paths.json").is_file():
+            return str(candidate)
+    return None
+
+
+async def main(port: int, root: str | None = None) -> None:
+    server = BridgeServer(resolve_root(root))
     async with websockets.serve(server.handle, "localhost", port):
         logger.info("Bridge server 已启动: ws://localhost:%d", port)
         logger.info("等待浏览器扩展连接...")
@@ -126,6 +147,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="XHS Extension Bridge Server")
     parser.add_argument("--port", type=int, default=9333, help="监听端口（默认 9333）")
+    parser.add_argument("--root", default=None, help="工作台安装目录（可选）")
     args = parser.parse_args()
 
-    asyncio.run(main(args.port))
+    asyncio.run(main(args.port, args.root))
+

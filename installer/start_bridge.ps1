@@ -49,7 +49,7 @@ if (-not (Test-Path -LiteralPath $server)) {
 # ---------- 端口检查 ----------
 Write-Step "检查端口 $port"
 $bridge = Test-BridgeOfRoot $Root $port $cfg
-if ($bridge.State -eq 'running' -and $bridge.SameRoot -eq $true) {
+if ($bridge.State -eq 'running' -and $bridge.SameRoot -eq $true -and $bridge.Healthy -eq $true) {
     # 归属已确认：再看连接状态，不能直接就说出稿
     Write-Ok "Bridge 已在运行（PID $($bridge.Owner.Pid)），属于本安装目录，直接复用，不再重复启动"
     Write-Step '当前连接状态'
@@ -66,7 +66,7 @@ if ($bridge.State -eq 'running' -and $bridge.SameRoot -eq $true) {
         }
         else { Write-Warn2 '登录状态暂时读不到，可稍后运行「检查环境.cmd」' }
         Write-Host ''
-        Write-Host '现在可以回到扣子对话，发送「开始今天的工作」。' -ForegroundColor Cyan
+        if ($probe.login -eq $true) { Write-Host '现在可以回到扣子对话，发送「开始今天的工作」。' -ForegroundColor Cyan }
     }
     else {
         Write-Warn2 'Bridge 在运行，但浏览器扩展尚未连接（此时还不能出稿）'
@@ -76,6 +76,11 @@ if ($bridge.State -eq 'running' -and $bridge.SameRoot -eq $true) {
     }
     Write-Host ''
     exit 0
+}
+if ($bridge.State -eq 'running' -and $bridge.SameRoot -eq $true) {
+    Write-Warn2 "本安装目录的 Bridge 占用端口 $port，但没有通过服务状态探测"
+    Write-Host '    本次不重复启动。请查看该 Bridge 窗口及日志，确认任务空闲后关闭并重新启动。' -ForegroundColor Yellow
+    exit 3
 }
 if ($bridge.State -eq 'running' -and $bridge.SameRoot -eq $false) {
     Write-Warn2 "端口 $port 上的 Bridge 属于另一个安装目录：$($bridge.ScriptPath)"
@@ -133,7 +138,13 @@ if (-not $still) {
     Write-Host "    请查看日志：$(Join-Path $Root 'logs')" -ForegroundColor Yellow
     exit 1
 }
-Write-Ok "Bridge 正在运行（PID $($still.Pid)，端口 $port）"
+$validated = Test-BridgeOfRoot $Root $port $cfg
+if ($validated.SameRoot -ne $true -or $validated.Healthy -ne $true) {
+    Write-Err '端口已有监听，但本安装目录的 Bridge 未通过身份与状态核验'
+    Write-Host '    请查看刚启动的 Bridge 窗口和日志；本工具不会结束其他进程。' -ForegroundColor Yellow
+    exit 1
+}
+Write-Ok "Bridge 正在运行（PID $($validated.Owner.Pid)，端口 $port），身份与状态核验通过"
 
 # ---------- 当前连接状态 ----------
 Write-Step '当前连接状态'
@@ -161,9 +172,13 @@ else { Write-Warn2 '暂时读不到扩展状态，可稍后运行「检查环境
 Write-Host ''
 Write-Host '-----------------------------------------'
 Write-Host '  Bridge 已在独立窗口运行，请保持该窗口开启。' -ForegroundColor Green
-Write-Host '  下一步：在扣子对话里发送「开始今天的工作」。'
+if ($probe -and $probe.extension -and $probe.login -eq $true) {
+    Write-Host '  下一步：在扣子对话里发送「开始今天的工作」。'
+}
+else { Write-Host '  下一步：按上方提示连接扩展并登录，再运行「检查环境.cmd」。' }
 Write-Host '  如需复查环境：双击「检查环境.cmd」。'
 Write-Host '-----------------------------------------'
 Write-Host ''
 exit 0
+
 

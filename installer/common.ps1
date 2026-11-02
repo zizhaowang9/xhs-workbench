@@ -173,7 +173,8 @@ function Test-BridgeProbe($root, $port, $cfg) {
     if (-not $py -or -not (Test-Path -LiteralPath $py)) { return $null }
     $probe = Join-Path $PSScriptRoot 'bridge_probe.py'
     if (-not (Test-Path -LiteralPath $probe)) { return $null }
-    $raw = cmd /c "`"$py`" `"$probe`" --port $port 2>nul"
+    # Argument binding preserves spaces/Chinese without cmd.exe quote stripping.
+    $raw = & $py $probe --port $port 2>$null
     if (-not $raw) { return $null }
     try { return (($raw | Select-Object -Last 1) | ConvertFrom-Json) } catch { return $null }
 }
@@ -185,19 +186,33 @@ function Test-BridgeOfRoot($root, $port, $cfg) {
     if (-not $port) { $port = 9333 }
     $owner = Get-PortOwner $port
     if (-not $owner) {
-        return [pscustomobject]@{ State = 'stopped'; Owner = $null; SameRoot = $null; ScriptPath = ''; Extension = $null; Via = '' }
+        return [pscustomobject]@{ State = 'stopped'; Owner = $null; SameRoot = $null; ScriptPath = ''; Extension = $null; Healthy = $false; Via = '' }
     }
 
     $cmdline = ''
     if ($owner.CommandLine) { $cmdline = [string]$owner.CommandLine }
     if ($cmdline -notmatch 'bridge_server\.py') {
-        return [pscustomobject]@{ State = 'occupied'; Owner = $owner; SameRoot = $false; ScriptPath = ''; Extension = $null; Via = 'cmdline' }
+        return [pscustomobject]@{ State = 'occupied'; Owner = $owner; SameRoot = $false; ScriptPath = ''; Extension = $null; Healthy = $false; Via = 'cmdline' }
     }
 
     $expected = Get-BridgeScriptPath $root $cfg
     $scriptPath = ''
-    $m = [regex]::Match($cmdline, '([A-Za-z]:\\[^"]*?bridge_server\.py)')
-    if ($m.Success) { $scriptPath = $m.Groups[1].Value }
+    # Remove the executable first so an unquoted python.exe cannot be
+    # greedily captured as part of the script path. Keep spaces/Chinese in scripts.
+    $arguments = $cmdline
+    $exe = [string]$owner.ExecutablePath
+    if ($exe -and $arguments.StartsWith(('"' + $exe + '"'), [StringComparison]::OrdinalIgnoreCase)) {
+        $arguments = $arguments.Substring($exe.Length + 2).TrimStart()
+    } elseif ($exe -and $arguments.StartsWith(($exe + ' '), [StringComparison]::OrdinalIgnoreCase)) {
+        $arguments = $arguments.Substring($exe.Length).TrimStart()
+    } else {
+        $arguments = [regex]::Replace($arguments, '^\s*(?:"[^"]*"|\S+)\s+', '')
+    }
+    $m = [regex]::Match($arguments, '^\s*(?:"((?:[A-Za-z]:\\|\\\\)[^"]*?bridge_server\.py)"|((?:[A-Za-z]:\\|\\\\).*?bridge_server\.py)(?=\s|$))', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if ($m.Success) {
+        if ($m.Groups[1].Success) { $scriptPath = $m.Groups[1].Value }
+        else { $scriptPath = $m.Groups[2].Value }
+    }
 
     $sameRoot = $null
     $via = 'cmdline'
@@ -223,7 +238,7 @@ function Test-BridgeOfRoot($root, $port, $cfg) {
             }
         }
     }
-    return [pscustomobject]@{ State = 'running'; Owner = $owner; SameRoot = $sameRoot; ScriptPath = $scriptPath; Extension = $ext; Via = $via }
+    return [pscustomobject]@{ State = 'running'; Owner = $owner; SameRoot = $sameRoot; ScriptPath = $scriptPath; Extension = $ext; Healthy = [bool]($probe -and $probe.reachable); Via = $via }
 }
 
 function Test-PyImport($py, $code) {
@@ -241,4 +256,5 @@ function Invoke-Logged($exe, $argLine) {
     }
     return $code
 }
+
 

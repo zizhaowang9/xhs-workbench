@@ -32,6 +32,13 @@ $t = Test-Workbench $Root
 if (-not $t.ok) { throw ($t.lines -join '; ') }
 if (Test-ModelConfig $Root) { throw 'Blank model unexpectedly reported ready.' }
 
+# Actual localhost Bridge lifecycle through the installed Windows runner.
+# This creates no browser/account connection and uses only an available test port.
+& $cfg.xhs_python (Join-Path $Package 'tests\bridge_smoke.py')
+if ($LASTEXITCODE -ne 0) { throw 'Bridge localhost protocol checks failed.' }
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Package 'tests\bridge_windows.ps1') -Root $Root
+if ($LASTEXITCODE -ne 0) { throw 'Windows Bridge runner and ownership checks failed.' }
+
 # Model readiness is a local structural check. All keys below are dummy fixtures.
 $modelPath = Join-Path $Root 'config\gpt.local.json'
 $fixtures = @(
@@ -58,5 +65,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Installed writer mock failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Installed local render failed.' }
 & $cfg.xhs_python (Join-Path $Package 'tests\verify_render.py') (Join-Path $run 'images')
 if ($LASTEXITCODE -ne 0) { throw 'Rendered six-image check failed.' }
-Write-Host 'PASS: fresh install directory, project environments, blank model, offline materials, mock writer, Chromium and six local rendered PNGs.'
+Write-Host 'PASS: fresh install directory, project environments, real localhost Bridge and Windows runner, blank model, offline materials, mock writer, Chromium and six local rendered PNGs.'
 Write-Host 'Verified: project-managed Python provision/use (UV_PYTHON_PREFERENCE=only-managed). Host is not a completely clean Windows image. Not tested: live model calls, Chrome extension, XHS login, upload, saving or reopening site drafts.'
+
